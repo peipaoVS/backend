@@ -1,0 +1,45 @@
+server:
+  port: 8017
+
+spring:
+  application:
+    name: user-admin-backend
+  datasource:
+    url: jdbc:mysql://192.168.1.168:9000/aibank?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: aibank_app
+    password: Aibank@app2026
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        # 格式化SQL输出
+        jdbc:
+          batch_size: 20
+    # 显示SQL配置放到这里
+    show-sql: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+# 关键配置：配置日志级别打印SQL
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.type: TRACE
+    # 你的包名
+    com.example: DEBUG
+
+app:
+  auth:
+    token-header: Authorization
+    token-prefix: Bearer
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - http://192.168.*:*
