@@ -14,10 +14,15 @@ import com.mmlm.useradmin.repository.SysUserRoleRepository;
 import com.mmlm.useradmin.entity.SysUserRole;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 
 import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
@@ -41,15 +46,18 @@ public class AgentModuleService {
     private final SysAgentModuleRoleRepository sysAgentModuleRoleRepository;
     private final SysRoleRepository sysRoleRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
+    private final RestTemplate restTemplate;
 
     public AgentModuleService(SysAgentModuleRepository sysAgentModuleRepository,
                               SysAgentModuleRoleRepository sysAgentModuleRoleRepository,
                               SysRoleRepository sysRoleRepository,
-                              SysUserRoleRepository sysUserRoleRepository) {
+                              SysUserRoleRepository sysUserRoleRepository,
+                              RestTemplate restTemplate) {
         this.sysAgentModuleRepository = sysAgentModuleRepository;
         this.sysAgentModuleRoleRepository = sysAgentModuleRoleRepository;
         this.sysRoleRepository = sysRoleRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
+        this.restTemplate = restTemplate;
     }
 
     public List<AgentModuleResponse> list(String keyword, String moduleType) {
@@ -163,6 +171,100 @@ public class AgentModuleService {
         sysAgentModuleRoleRepository.deleteByAgentModuleId(id);
         sysAgentModuleRoleRepository.flush();
         sysAgentModuleRepository.delete(module);
+    }
+
+    public Object chat(Map<String, Object> request) {
+        Object modelIdObj = request.get("modelId");
+        if (modelIdObj == null) {
+            throw new BusinessException("modelId 不能为空");
+        }
+        Long modelId = modelIdObj instanceof Number ? ((Number) modelIdObj).longValue() : Long.parseLong(modelIdObj.toString());
+        SysAgentModule module = sysAgentModuleRepository.findById(modelId)
+                .orElseThrow(() -> new BusinessException("智能体模块不存在"));
+
+        String domain = module.getApiDomain().trim();
+        while (domain.endsWith("/")) {
+            domain = domain.substring(0, domain.length() - 1);
+        }
+
+        String endpointPath = (String) request.get("endpoint");
+        String url;
+        if (endpointPath != null) {
+            url = domain + endpointPath;
+        } else if (domain.matches(".+/v\\d+$")) {
+            url = domain + "/chat/completions";
+        } else {
+            url = domain + "/v1/chat/completions";
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (StringUtils.hasText(module.getApiKey())) {
+            headers.setBearerAuth(module.getApiKey());
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (endpointPath != null) {
+            body.putAll(request);
+        } else {
+            body.put("model", module.getBaseModel());
+            body.put("messages", request.get("messages"));
+        }
+        body.remove("modelId");
+        body.remove("endpoint");
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        try {
+            if (endpointPath != null) {
+                String raw = restTemplate.postForObject(url, entity, String.class);
+                String answer = parseRuleQaResponse(raw);
+                if (answer != null) {
+                    return Collections.singletonMap("answer", answer);
+                }
+                return Collections.singletonMap("raw", raw);
+            }
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            return response.getBody();
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            throw new BusinessException(responseBody);
+        } catch (Exception e) {
+            throw new BusinessException("请求模型 API 失败: " + e.getMessage());
+        }
+    }
+
+    private String parseRuleQaResponse(String sse) {
+        if (sse == null) return null;
+        StringBuilder deltaBuilder = new StringBuilder();
+        for (String line : sse.split("\n")) {
+            if (line.startsWith("data: ")) {
+                String jsonStr = line.substring(6).trim();
+                if (jsonStr.isEmpty() || jsonStr.equals("[DONE]")) continue;
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, Object> event = mapper.readValue(jsonStr, Map.class);
+                    if ("TEXT_MESSAGE_CONTENT".equals(event.get("type")) && event.containsKey("delta")) {
+                        deltaBuilder.append(event.get("delta"));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        if (deltaBuilder.length() == 0) return null;
+        String combined = deltaBuilder.toString();
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> data = mapper.readValue(combined, Map.class);
+            if (data.containsKey("answer_text")) return (String) data.get("answer_text");
+            if (data.containsKey("raw_final_answer")) return (String) data.get("raw_final_answer");
+        } catch (Exception ignored) {
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"answer_text\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(combined);
+        if (m.find()) {
+            String raw = m.group(1);
+            return raw.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r");
+        }
+        return combined;
     }
 
     private void validateRequest(AgentModuleSaveRequest request, Long id) {

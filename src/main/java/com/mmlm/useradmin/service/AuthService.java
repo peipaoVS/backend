@@ -24,6 +24,8 @@ import com.mmlm.useradmin.repository.SysRoleRepository;
 import com.mmlm.useradmin.repository.SysUserPostRepository;
 import com.mmlm.useradmin.repository.SysUserRepository;
 import com.mmlm.useradmin.repository.SysUserRoleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +39,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final String THEME_LIGHT = "light";
     private static final String THEME_DARK = "dark";
     private static final Comparator<SysMenu> MENU_COMPARATOR = Comparator
             .comparing(SysMenu::getSection, Comparator.nullsLast(String::compareTo))
+            .thenComparing(SysMenu::getParentId, Comparator.nullsLast(Long::compareTo))
             .thenComparing(SysMenu::getSortOrder, Comparator.nullsLast(Integer::compareTo))
             .thenComparing(SysMenu::getId, Comparator.nullsLast(Long::compareTo));
 
@@ -150,25 +154,7 @@ public class AuthService {
                 .filter(Objects::nonNull)
                 .anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getCode()));
 
-        List<SysMenu> visibleMenus;
-        if (adminUser) {
-            visibleMenus = sysMenuRepository.findAll().stream()
-                    .filter(menu -> Integer.valueOf(1).equals(menu.getStatus()))
-                    .collect(Collectors.toList());
-        } else if (roleIds.isEmpty()) {
-            visibleMenus = Collections.emptyList();
-        } else {
-            List<Long> menuIds = sysRoleMenuRepository.findByRoleIdIn(roleIds).stream()
-                    .map(SysRoleMenu::getMenuId)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .collect(Collectors.toList());
-            visibleMenus = menuIds.isEmpty()
-                    ? Collections.<SysMenu>emptyList()
-                    : sysMenuRepository.findAllById(menuIds).stream()
-                    .filter(menu -> Integer.valueOf(1).equals(menu.getStatus()))
-                    .collect(Collectors.toList());
-        }
+        List<SysMenu> visibleMenus = loadVisibleMenus(adminUser, roleIds, user);
 
         UserProfileResponse response = new UserProfileResponse();
         response.setId(user.getId());
@@ -187,19 +173,72 @@ public class AuthService {
                 .map(item -> postNameMap.get(item.getPostId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
-        response.setMenus(visibleMenus.stream()
-                .sorted(MENU_COMPARATOR)
-                .map(menu -> {
-                    UserMenuResponse item = new UserMenuResponse();
-                    item.setName(menu.getName());
-                    item.setCode(menu.getCode());
-                    item.setSection(menu.getSection());
-                    item.setPath(menu.getPath());
-                    item.setSortOrder(menu.getSortOrder());
-                    return item;
-                })
-                .collect(Collectors.toList()));
+        response.setDefaultPath(userRoles.stream()
+                .map(item -> roleMap.get(item.getRoleId()))
+                .filter(Objects::nonNull)
+                .map(SysRole::getDefaultPath)
+                .filter(p -> p != null && !p.isEmpty())
+                .findFirst()
+                .orElse(null));
+        if (visibleMenus != null) {
+            response.setMenus(visibleMenus.stream()
+                    .sorted(MENU_COMPARATOR)
+                    .map(menu -> {
+                        UserMenuResponse item = new UserMenuResponse();
+                        item.setId(menu.getId());
+                        item.setName(menu.getName());
+                        item.setCode(menu.getCode());
+                        item.setSection(menu.getSection());
+                        item.setPath(menu.getPath());
+                        item.setParentId(menu.getParentId());
+                        item.setSortOrder(menu.getSortOrder());
+                        item.setRemark(menu.getRemark());
+                        return item;
+                    })
+                    .collect(Collectors.toList()));
+        }
         return response;
+    }
+
+    private List<SysMenu> loadVisibleMenus(boolean adminUser, List<Long> roleIds, SysUser user) {
+        try {
+            if (adminUser) {
+                return sysMenuRepository.findAll().stream()
+                        .filter(menu -> Integer.valueOf(1).equals(menu.getStatus()))
+                        .collect(Collectors.toList());
+            }
+
+            if (roleIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            List<Long> menuIds = sysRoleMenuRepository.findByRoleIdIn(roleIds).stream()
+                    .map(SysRoleMenu::getMenuId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (menuIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            Map<Long, SysMenu> allMenuMap = sysMenuRepository.findAll().stream()
+                    .filter(menu -> Integer.valueOf(1).equals(menu.getStatus()))
+                    .collect(Collectors.toMap(SysMenu::getId, menu -> menu));
+            Map<Long, SysMenu> collectedMenus = new java.util.LinkedHashMap<Long, SysMenu>();
+
+            for (Long menuId : menuIds) {
+                SysMenu menu = allMenuMap.get(menuId);
+                while (menu != null && collectedMenus.putIfAbsent(menu.getId(), menu) == null) {
+                    Long parentId = menu.getParentId();
+                    menu = parentId == null ? null : allMenuMap.get(parentId);
+                }
+            }
+
+            return collectedMenus.values().stream().collect(Collectors.toList());
+        } catch (RuntimeException exception) {
+            log.warn("Failed to load menu snapshot for user {}, fallback to frontend built-in menus", user.getUsername(), exception);
+            return null;
+        }
     }
 
     private String normalizeTheme(String value) {

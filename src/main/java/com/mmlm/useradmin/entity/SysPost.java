@@ -20,6 +20,9 @@ public class SysPost {
     @Column(nullable = false)
     private Integer status;
 
+    @Column(name = "leader_user_id")
+    private Long leaderUserId;
+
     @Column(length = 255)
     private String remark;
 
@@ -59,6 +62,14 @@ public class SysPost {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Long getLeaderUserId() {
+        return leaderUserId;
+    }
+
+    public void setLeaderUserId(Long leaderUserId) {
+        this.leaderUserId = leaderUserId;
     }
 
     public String getRemark() {

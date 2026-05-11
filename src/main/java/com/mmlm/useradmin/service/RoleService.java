@@ -71,6 +71,7 @@ public class RoleService {
         role.setCode(request.getCode().trim());
         role.setStatus(request.getStatus());
         role.setRemark(request.getRemark());
+        role.setDefaultPath(request.getDefaultPath());
         role.setCreatedAt(now);
         role.setUpdatedAt(now);
         sysRoleRepository.save(role);
@@ -88,6 +89,7 @@ public class RoleService {
         role.setCode(request.getCode().trim());
         role.setStatus(request.getStatus());
         role.setRemark(request.getRemark());
+        role.setDefaultPath(request.getDefaultPath());
         role.setUpdatedAt(LocalDateTime.now());
         sysRoleRepository.save(role);
         return toResponse(role);
@@ -118,6 +120,7 @@ public class RoleService {
         response.setCode(role.getCode());
         response.setStatus(role.getStatus());
         response.setRemark(role.getRemark());
+        response.setDefaultPath(role.getDefaultPath());
         response.setCreatedAt(role.getCreatedAt());
         response.setUpdatedAt(role.getUpdatedAt());
         return response;

@@ -13,6 +13,7 @@ public class UserProfileResponse {
     private String theme;
     private List<String> roleNames;
     private List<String> postNames;
+    private String defaultPath;
     private List<UserMenuResponse> menus;
 
     public Long getId() {
@@ -85,6 +86,14 @@ public class UserProfileResponse {
 
     public void setPostNames(List<String> postNames) {
         this.postNames = postNames;
+    }
+
+    public String getDefaultPath() {
+        return defaultPath;
+    }
+
+    public void setDefaultPath(String defaultPath) {
+        this.defaultPath = defaultPath;
     }
 
     public List<UserMenuResponse> getMenus() {

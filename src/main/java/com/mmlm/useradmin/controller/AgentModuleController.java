@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/agent-modules")
@@ -53,5 +54,11 @@ public class AgentModuleController {
     public ApiResponse<Void> delete(@PathVariable("id") Long id) {
         agentModuleService.delete(id);
         return ApiResponse.ok("删除成功", null);
+    }
+
+    @PostMapping("/chat")
+    public ApiResponse<Object> chat(@RequestBody Map<String, Object> request) {
+        Object result = agentModuleService.chat(request);
+        return ApiResponse.ok(result);
     }
 }

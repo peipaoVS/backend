@@ -9,6 +9,7 @@ public class RoleResponse {
     private String code;
     private Integer status;
     private String remark;
+    private String defaultPath;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -50,6 +51,14 @@ public class RoleResponse {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    public String getDefaultPath() {
+        return defaultPath;
+    }
+
+    public void setDefaultPath(String defaultPath) {
+        this.defaultPath = defaultPath;
     }
 
     public LocalDateTime getCreatedAt() {

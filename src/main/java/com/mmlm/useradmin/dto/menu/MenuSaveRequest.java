@@ -18,6 +18,8 @@ public class MenuSaveRequest {
     @NotBlank(message = "菜单路径不能为空")
     private String path;
 
+    private Long parentId;
+
     @NotNull(message = "排序值不能为空")
     private Integer sortOrder;
 
@@ -58,6 +60,14 @@ public class MenuSaveRequest {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public Integer getSortOrder() {

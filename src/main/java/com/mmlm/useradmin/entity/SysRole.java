@@ -23,6 +23,9 @@ public class SysRole {
     @Column(length = 255)
     private String remark;
 
+    @Column(name = "default_path", length = 64)
+    private String defaultPath;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -67,6 +70,14 @@ public class SysRole {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    public String getDefaultPath() {
+        return defaultPath;
+    }
+
+    public void setDefaultPath(String defaultPath) {
+        this.defaultPath = defaultPath;
     }
 
     public LocalDateTime getCreatedAt() {

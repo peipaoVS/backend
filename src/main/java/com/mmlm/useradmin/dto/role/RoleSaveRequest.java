@@ -16,6 +16,8 @@ public class RoleSaveRequest {
 
     private String remark;
 
+    private String defaultPath;
+
     public String getName() {
         return name;
     }
@@ -46,5 +48,13 @@ public class RoleSaveRequest {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    public String getDefaultPath() {
+        return defaultPath;
+    }
+
+    public void setDefaultPath(String defaultPath) {
+        this.defaultPath = defaultPath;
     }
 }

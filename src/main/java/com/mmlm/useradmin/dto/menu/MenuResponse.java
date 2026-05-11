@@ -10,6 +10,7 @@ public class MenuResponse {
     private String code;
     private String section;
     private String path;
+    private Long parentId;
     private Integer sortOrder;
     private Integer status;
     private String remark;
@@ -56,6 +57,14 @@ public class MenuResponse {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public Integer getSortOrder() {

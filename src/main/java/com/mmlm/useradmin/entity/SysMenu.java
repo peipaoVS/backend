@@ -28,6 +28,9 @@ public class SysMenu {
     @Column(nullable = false, unique = true, length = 128)
     private String path;
 
+    @Column(name = "parent_id")
+    private Long parentId;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
@@ -81,6 +84,14 @@ public class SysMenu {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public Integer getSortOrder() {

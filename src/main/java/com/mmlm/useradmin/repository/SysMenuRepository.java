@@ -13,4 +13,6 @@ public interface SysMenuRepository extends JpaRepository<SysMenu, Long>, JpaSpec
     boolean existsByPath(String path);
 
     boolean existsByPathAndIdNot(String path, Long id);
+
+    boolean existsByParentId(Long parentId);
 }

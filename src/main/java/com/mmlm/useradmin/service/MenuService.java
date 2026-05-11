@@ -81,6 +81,7 @@ public class MenuService {
         menu.setCode(request.getCode().trim());
         menu.setSection(request.getSection().trim());
         menu.setPath(request.getPath().trim());
+        menu.setParentId(normalizeParentId(request.getParentId()));
         menu.setSortOrder(request.getSortOrder());
         menu.setStatus(request.getStatus());
         menu.setRemark(request.getRemark());
@@ -102,6 +103,7 @@ public class MenuService {
         menu.setCode(request.getCode().trim());
         menu.setSection(request.getSection().trim());
         menu.setPath(request.getPath().trim());
+        menu.setParentId(normalizeParentId(request.getParentId()));
         menu.setSortOrder(request.getSortOrder());
         menu.setStatus(request.getStatus());
         menu.setRemark(request.getRemark());
@@ -116,6 +118,9 @@ public class MenuService {
     public void delete(Long id) {
         SysMenu menu = sysMenuRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("菜单不存在"));
+        if (sysMenuRepository.existsByParentId(id)) {
+            throw new BusinessException("请先删除子菜单");
+        }
         sysRoleMenuRepository.deleteByMenuId(id);
         sysRoleMenuRepository.flush();
         sysMenuRepository.delete(menu);
@@ -150,6 +155,24 @@ public class MenuService {
                 throw new BusinessException("存在无效角色");
             }
         }
+
+        Long parentId = normalizeParentId(request.getParentId());
+        if (parentId != null) {
+            if (id != null && parentId.equals(id)) {
+                throw new BusinessException("上级菜单不能选择自身");
+            }
+
+            SysMenu parentMenu = sysMenuRepository.findById(parentId)
+                    .orElseThrow(() -> new BusinessException("上级菜单不存在"));
+
+            if (!Objects.equals(parentMenu.getSection(), request.getSection().trim())) {
+                throw new BusinessException("上级菜单与所属栏目必须一致");
+            }
+        }
+    }
+
+    private Long normalizeParentId(Long parentId) {
+        return parentId == null || parentId.longValue() <= 0L ? null : parentId;
     }
 
     private void replaceRoleRelations(Long menuId, List<Long> roleIds) {
@@ -197,6 +220,7 @@ public class MenuService {
                     response.setCode(menu.getCode());
                     response.setSection(menu.getSection());
                     response.setPath(menu.getPath());
+                    response.setParentId(menu.getParentId());
                     response.setSortOrder(menu.getSortOrder());
                     response.setStatus(menu.getStatus());
                     response.setRemark(menu.getRemark());

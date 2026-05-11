@@ -2,11 +2,22 @@ package com.mmlm.useradmin.dto.auth;
 
 public class UserMenuResponse {
 
+    private Long id;
     private String name;
     private String code;
     private String section;
     private String path;
+    private Long parentId;
     private Integer sortOrder;
+    private String remark;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
@@ -40,11 +51,27 @@ public class UserMenuResponse {
         this.path = path;
     }
 
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
     public Integer getSortOrder() {
         return sortOrder;
     }
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }
